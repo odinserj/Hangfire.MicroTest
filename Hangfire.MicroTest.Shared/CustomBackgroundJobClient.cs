@@ -1,0 +1,60 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using Hangfire.Common;
+using Hangfire.States;
+using Hangfire.Storage;
+
+namespace Hangfire.MicroTest.Shared
+{
+    internal sealed class JobFilterAttributeProvider : JobFilterAttributeFilterProvider
+    {
+        public IEnumerable<JobFilterAttribute> GetTypeFilters(Job job)
+        {
+            if (job == null) throw new ArgumentNullException(nameof(job));
+            return GetTypeAttributes(job);
+        }
+
+        public IEnumerable<JobFilterAttribute> GetMethodFilters(Job job)
+        {
+            if (job == null) throw new ArgumentNullException(nameof(job));
+            return GetMethodAttributes(job);
+        }
+    }
+    
+    public class CustomBackgroundJobClient : IBackgroundJobClient
+    {
+        private readonly IBackgroundJobClient _inner;
+        private readonly JobFilterAttributeProvider _attributeProvider;
+
+        public CustomBackgroundJobClient(IBackgroundJobClient inner)
+        {
+            _inner = inner ?? throw new ArgumentNullException(nameof(inner));
+            _attributeProvider = new JobFilterAttributeProvider();
+        }
+        
+        public string Create(Job job, IState state)
+        {
+            var typeFilters = _attributeProvider.GetTypeFilters(job).ToArray();
+            var methodFilters = _attributeProvider.GetMethodFilters(job).ToArray();
+
+            var invocationData = InvocationData.SerializeJob(job);
+            var payload = invocationData.SerializePayload(excludeArguments: true);
+            var args = invocationData.Arguments;
+            var displayName = $"{job.Type.Name}.{job.Method.Name}";
+
+            var proxyJob = Job.FromExpression(() => CustomJob.Execute(displayName, new CustomJob(
+                    payload,
+                    args,
+                    typeFilters.Length > 0 ? typeFilters : null,
+                    methodFilters.Length > 0 ? methodFilters : null)));
+
+            return _inner.Create(proxyJob, state);
+        }
+
+        public bool ChangeState(string jobId, IState state, string expectedState)
+        {
+            return _inner.ChangeState(jobId, state, expectedState);
+        }
+    }
+}

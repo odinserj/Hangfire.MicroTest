@@ -14,20 +14,12 @@ namespace Hangfire.MicroTest.NewsletterService
         {
             services.AddHangfire(config => config.UseApplicationConfiguration());
             services.AddHangfireServer(config => config.Queues = new [] { "newsletter", "default" });
-
-            services.AddSingleton<NewsletterSender>();
-            services.AddSingleton(provider => new HandlerRegistry(provider)
-                .Register<NewsletterSender>("newsletter/send")
-                /*.Register<SomeOtherType>("newsletter/generate")*/);
+            
+            services.AddSingleton<IBackgroundJobClient>(provider => new CustomBackgroundJobClient(new BackgroundJobClient()));
         }
 
-        public void Configure(IApplicationBuilder app, IWebHostEnvironment env, IBackgroundJobClient client)
+        public void Configure(IApplicationBuilder app, IWebHostEnvironment env)
         {
-            client.Enqueue<CustomJobDispatcher>(x => x.Execute("orders/submit", new CustomJob(
-                new JobFilterAttribute[] {new QueueAttribute("orders")},
-                12345,
-                "Created")));
-
             if (env.IsDevelopment())
             {
                 app.UseDeveloperExceptionPage();

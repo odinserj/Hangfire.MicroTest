@@ -11,9 +11,20 @@ namespace Hangfire.MicroTest.Shared
             {
                 if (arg is CustomJob customJob)
                 {
-                    foreach (var filter in customJob.Filters)
+                    if (customJob.MethodFilters != null)
                     {
-                        yield return new JobFilter(filter, JobFilterScope.Method, filter.Order);
+                        foreach (var filter in customJob.MethodFilters)
+                        {
+                            yield return new JobFilter(filter, JobFilterScope.Method, null);
+                        }
+                    }
+
+                    if (customJob.TypeFilters != null)
+                    {
+                        foreach (var filter in customJob.TypeFilters)
+                        {
+                            yield return new JobFilter(filter, JobFilterScope.Type, null);
+                        }
                     }
                 }
             }
