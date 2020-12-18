@@ -39,13 +39,13 @@ namespace Hangfire.MicroTest.Shared
             var methodFilters = _attributeProvider.GetMethodFilters(job).ToArray();
 
             var invocationData = InvocationData.SerializeJob(job);
-            var payload = invocationData.SerializePayload(excludeArguments: true);
-            var args = invocationData.Arguments;
             var displayName = $"{job.Type.Name}.{job.Method.Name}";
 
             var proxyJob = Job.FromExpression(() => CustomJob.Execute(displayName, new CustomJob(
-                    payload,
-                    args,
+                    invocationData.Type,
+                    invocationData.Method,
+                    invocationData.ParameterTypes != String.Empty ? invocationData.ParameterTypes : null,
+                    invocationData.Arguments,
                     typeFilters.Length > 0 ? typeFilters : null,
                     methodFilters.Length > 0 ? methodFilters : null)));
 
