@@ -3,6 +3,7 @@ using System.ComponentModel;
 using System.Linq;
 using Hangfire.Annotations;
 using Hangfire.Common;
+using Hangfire.Server;
 using Hangfire.Storage;
 using Newtonsoft.Json;
 
@@ -45,7 +46,7 @@ namespace Hangfire.MicroTest.Shared
         public JobFilterAttribute[] MethodFilters { get; }
 
         [DisplayName("{0}")]
-        public static void Execute(string displayName, CustomJob customJob)
+        public static void Execute(string displayName, CustomJob customJob, PerformContext context)
         {
             if (customJob == null) throw new ArgumentNullException(nameof(customJob));
 
@@ -54,15 +55,14 @@ namespace Hangfire.MicroTest.Shared
                 customJob.Method,
                 customJob.ParameterTypes ?? String.Empty,
                 customJob.Args);
-            
+
             var job = invocationData.DeserializeJob();
 
-            if (!job.Method.IsStatic)
-            {
-                throw new NotImplementedException("Only support for static methods is implemented!");
-            }
-
-            job.Method.Invoke(null, job.Args.ToArray());
+            context.Performer.Perform(new PerformContext(
+                context.Storage,
+                context.Connection,
+                new BackgroundJob(context.BackgroundJob.Id, job, context.BackgroundJob.CreatedAt),
+                context.CancellationToken));
         }
     }
 }

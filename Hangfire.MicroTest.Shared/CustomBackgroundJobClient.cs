@@ -39,15 +39,18 @@ namespace Hangfire.MicroTest.Shared
             var methodFilters = _attributeProvider.GetMethodFilters(job).ToArray();
 
             var invocationData = InvocationData.SerializeJob(job);
-            var displayName = $"{job.Type.Name}.{job.Method.Name}";
+            var displayName = $"{job.Type.Name}.{job.Method.Name}"; // TODO: Also use the DisplayNameAttribute
 
-            var proxyJob = Job.FromExpression(() => CustomJob.Execute(displayName, new CustomJob(
+            var proxyJob = Job.FromExpression(() => CustomJob.Execute(
+                displayName,
+                new CustomJob(
                     invocationData.Type,
                     invocationData.Method,
                     invocationData.ParameterTypes != String.Empty ? invocationData.ParameterTypes : null,
                     invocationData.Arguments,
                     typeFilters.Length > 0 ? typeFilters : null,
-                    methodFilters.Length > 0 ? methodFilters : null)));
+                    methodFilters.Length > 0 ? methodFilters : null),
+                default));
 
             return _inner.Create(proxyJob, state);
         }
